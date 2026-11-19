@@ -72,3 +72,21 @@ th:last-child, td:last-child { text-align: right; }
 .quick-number input { flex: 1; min-width: 0; }
 .quick-number output { min-width: 4.5rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .quick-item input[type="range"] { width: 100%; margin: .65rem 0; min-height: 2.25rem; }
+
+/* v5: somente desenho, força e sliders na área prioritária. */
+.visual { padding-bottom: .75rem; }
+.visual #diagram { max-height: min(55vh, 28rem); }
+.visual #visual-angles, .visual #diagram-note, .visual .legend { display: none; }
+.primary-tension { margin-top: .55rem; padding: .65rem .9rem; }
+.primary-tension strong { font-size: clamp(1.6rem, 7vw, 2.35rem); }
+.primary-tension p { margin: .25rem 0 0; }
+.quick-controls { padding: .75rem; }
+.quick-controls h2 { margin-bottom: .4rem; font-size: 1rem; }
+.quick-grid { gap: .4rem; }
+.quick-item { padding: .4rem .15rem; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.quick-item:last-child { border-bottom: 0; }
+.quick-item > label { min-height: 0; font-size: .86rem; }
+.slider-line { display: flex; align-items: center; gap: .75rem; }
+.slider-line input[type="range"] { flex: 1; width: auto; min-width: 0; margin: .15rem 0; }
+.slider-line output { min-width: 4.5rem; text-align: right; font-size: .95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 859px) { .quick-grid { grid-template-columns: 1fr; } }
