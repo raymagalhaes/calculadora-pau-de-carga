@@ -14,7 +14,7 @@
 <main>
 <div class="layout">
 <section class="panel visual" aria-labelledby="visual-title">
-<h1 id="visual-title">Calculadora de Pau de Carga <small class="help">v16</small></h1>
+<h1 id="visual-title">Calculadora de Pau de Carga <small class="help">v17</small></h1>
 <svg id="diagram" viewBox="0 0 460 380" role="img" aria-labelledby="diagram-title diagram-desc">
 <title id="diagram-title">Diagrama do pau de carga</title><desc id="diagram-desc">Pau de carga articulado, peso da estrutura, peso na cabeça, carga suspensa e direção da tração do cabo.</desc>
 <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 H 0 V 20" class="grid-line"/></pattern><marker id="weight-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L8 4 L0 8 Z" fill="var(--weight)"/></marker><marker id="cable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="var(--cable)"/></marker></defs>
@@ -35,12 +35,14 @@
 <div class="quick-item">
 <label for="cable-slider">Ângulo do cabo de segurança (° da vertical)</label>
 <div class="slider-line"><input id="cable-slider" type="range" min="0" max="90" step="0.5" aria-label="Ajustar ângulo do cabo de segurança"><output id="cable-value"></output></div>
+<small class="help" id="cable-auto-help">Ao fixar o cabo na estrutura, o ângulo é calculado automaticamente.</small>
 </div>
 <div class="quick-item">
 <label for="d">Fixação do cabo · distância da base ao longo do pau de carga (m)</label>
 <input id="d" type="number" min="0" step="any" inputmode="decimal" required hidden>
 <div class="slider-line"><input id="fix-slider" type="range" min="0" max="9" step="0.01" aria-label="Ajustar posição da fixação do cabo de segurança"><output id="d-value"></output></div>
-<div class="fix-lock"><label class="fix-lock-toggle"><input id="fix-lock" type="checkbox"> Fixar ponto do cabo na estrutura</label><label class="fix-lock-number" for="fix-position" id="fix-position-label" hidden>Posição X desde a base (m)<input id="fix-position" type="number" min="0.01" max="9" step="any" inputmode="decimal" value="3"></label></div>
+<div class="fix-lock"><label class="fix-lock-toggle"><input id="fix-lock" type="checkbox"> Fixar cabo na estrutura (ângulo automático)</label><label class="fix-lock-number" for="fix-position" id="fix-position-label" hidden>Posição X desde a base (m)<input id="fix-position" type="number" min="0.01" max="9" step="any" inputmode="decimal" value="3"></label></div>
+<div class="quick-item" id="anchor-height-control" hidden><label for="anchor-height-slider">Altura da fixação na estrutura, desde a base (m)</label><div class="slider-line"><input id="anchor-height-slider" type="range" min="0" max="18" step="0.01" aria-label="Ajustar altura da ancoragem na estrutura"><output id="anchor-height-value">6 m</output></div></div>
 </div>
 <div class="quick-item">
 <label for="P">Carga suspensa (kg)</label>
@@ -68,7 +70,7 @@
 <div class="measurement"><div class="actions"><button id="measure-theta">Medir pau de carga</button><button id="save-theta" disabled>Registrar</button></div><output id="preview-theta" aria-live="polite"></output></div>
 <div class="measurement"><input id="cable" type="number" min="0" max="90" step="any" inputmode="decimal" required hidden><div class="actions"><button id="measure-cable">Medir cabo</button><button id="save-cable" disabled>Registrar</button></div><output id="preview-cable" aria-live="polite"></output></div>
 </div>
-<p class="help">0° = vertical para cima; 90° = horizontal. O cálculo assume que o cabo puxa no sentido oposto à inclinação do pau de carga. Se a tração real tiver outra direção, o resultado não se aplica. A leitura do celular é indicativa.</p>
+<p class="help">No modo livre, 0° = vertical para cima e 90° = horizontal, com tração assumida oposta ao pau de carga. Com fixação na estrutura ativada, a direção é calculada entre as duas ancoragens, considerando a estrutura vertical alinhada à base do pau de carga. A leitura do celular é indicativa.</p>
 </section>
 
 
