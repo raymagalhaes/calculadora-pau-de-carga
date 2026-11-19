@@ -1,6 +1,6 @@
 'use strict';
 
-const defaults = Object.freeze({ L: 9, We: 120, Wc: 20, P: 100, d: 5, theta: 45, cable: 90, side: '', rise: '' });
+const defaults = Object.freeze({ L: 9, We: 120, Wc: 20, P: 200, d: 3, theta: 30, cable: 90, side: '-1', rise: '' });
 const radians = degrees => degrees * Math.PI / 180;
 const degrees = angle => angle * 180 / Math.PI;
 const clamp = value => Math.max(-1, Math.min(1, value));
@@ -8,7 +8,7 @@ const numberFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }
 const format = value => Math.abs(value) >= 1e12 ? value.toExponential(2).replace('.', ',') : numberFormat.format(value);
 const $ = id => document.getElementById(id);
 const keys = Object.keys(defaults);
-const storageKey = 'pau-de-carga-v1';
+const storageKey = 'pau-de-carga-v2';
 const phoneAxis = [0, 1, 0];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let saved = {};
@@ -40,10 +40,12 @@ function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
   const validTheta = Number.isFinite(theta) && theta >= 0 && theta <= 90;
   const validMasses = [We, Wc, P].every(value => Number.isFinite(value) && value >= 0);
   const validLength = Number.isFinite(L) && L > 0;
-  const validPoint = validLength && Number.isFinite(d) && d > 0 && d <= L;
+  const availableHeight = validLength && validTheta ? L * Math.cos(radians(theta)) : NaN;
+  const validPoint = Number.isFinite(d) && d > 0 && Number.isFinite(availableHeight) && d <= availableHeight + 1e-9;
+  const attachmentDistance = validPoint ? d / Math.cos(radians(theta)) : NaN;
   const phi = direction(cable, side, rise);
   if (validMasses && Number.isFinite(We + Wc + P)) result.total = We + Wc + P;
-  if (validPoint && validTheta) result.height = d * Math.cos(radians(theta));
+  if (validPoint) result.height = d;
   if (validTheta && phi !== null) result.relative = degrees(Math.acos(clamp(Math.cos(radians(phi - theta)))));
   if (validLength && validMasses && validTheta) {
     const moment = theta === 0 ? 0 : (P + Wc + We / 2) * (L * Math.sin(radians(theta)));
@@ -51,7 +53,7 @@ function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
   }
   if (!validLength) result.error = 'Informe um comprimento maior que zero.';
   else if (!validMasses) result.error = 'Informe massas iguais ou maiores que zero.';
-  else if (!validPoint) result.error = 'A fixação deve ficar acima de 0 m ao longo do pau e até sua extremidade.';
+  else if (!validPoint) result.error = 'A altura da fixação deve ser maior que zero e não ultrapassar a altura do pau nessa inclinação.';
   else if (!validTheta || !Number.isFinite(cable) || cable < 0 || cable > 90) result.error = 'Informe inclinações entre 0° e 90°.';
   else if (phi === null) result.error = 'Identifique a direção da ancoragem para calcular a tensão.';
   else if (!Number.isFinite(result.moment) || !Number.isFinite(result.total)) result.error = 'Os valores excedem a faixa de cálculo.';
@@ -61,7 +63,7 @@ function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
     if (Math.abs(signedLever) < 1e-9) result.error = 'O cabo está alinhado ou quase alinhado ao pau e não fornece momento útil.';
     else if (result.moment > 0 && signedLever > 0) result.error = 'A tração nessa direção aumenta o momento gravitacional em vez de equilibrá-lo.';
     else {
-      const tension = (result.moment / d) / Math.abs(signedLever);
+      const tension = (result.moment / attachmentDistance) / Math.abs(signedLever);
       if (Number.isFinite(tension)) result.tension = tension;
       else result.error = 'A tensão excede a faixa de cálculo.';
     }
@@ -95,13 +97,13 @@ function render() {
   $('validation').textContent = result.error ?? '';
   const validLength = Number.isFinite(values.L) && values.L > 0;
   $('fix-slider').disabled = !validLength;
-  $('fix-slider').max = validLength ? values.L : 1;
+  $('fix-slider').max = validLength && Number.isFinite(values.theta) ? Math.max(0, values.L * Math.cos(radians(values.theta))) : 1;
   $('fix-slider').value = values.d ?? 0;
   $('angle-rows').innerHTML = Array.from({ length: 10 }, (_, index) => {
     const theta = index * 10;
     return `<tr><th scope="row">${theta}°</th><td>${resultCell(solve({ ...values, theta }))}</td></tr>`;
   }).join('');
-  const count = validLength ? Math.floor(values.L) : 0;
+  const count = validLength && Number.isFinite(values.theta) ? Math.floor(Math.max(0, values.L * Math.cos(radians(values.theta))) + 1e-9) : 0;
   $('point-rows').innerHTML = Array.from({ length: Math.min(count, positionLimit) }, (_, index) => {
     const d = index + 1;
     return `<tr><th scope="row">${d}</th><td>${resultCell(solve({ ...values, d }))}</td></tr>`;
@@ -154,7 +156,7 @@ function draw({ theta, phi, fraction, complete }) {
     + label(shift(tip, 12, -10), 'Cabeça', 'start')
     + label(shift(ropeEnd, -16, 1), 'Carga', 'end')
     + label(shift(project(base, scale * .78, theta), 13, -13), `${format(values.L)} m`, 'start')
-    + (fraction === null ? '' : circle(point, 5, cableColor) + label(shift(point, -8, -7), `${format(values.d)} m`, 'end'))
+    + (fraction === null ? '' : circle(point, 5, cableColor) + label(shift(point, -8, -7), `${format(values.d)} m altura`, 'end'))
     + (phi === null || fraction === null ? '' : line(point, shift(point, 0, -48), 'var(--muted)', 1, reference)
       + line(point, cableEnd, cableColor, 2.5, complete ? 'marker-end="url(#cable-arrow)"' : reference)
       + arc(point, Math.min(28, scale * .25), phi, cableColor, Math.min(45, scale * .25 + 15)));
@@ -172,10 +174,11 @@ function updateDiagram() {
     return;
   }
   const phi = direction(cable, side, rise);
-  const fraction = Number.isFinite(d) && d > 0 && d <= L ? d / L : null;
+  const availableHeight = L * Math.cos(radians(theta));
+  const fraction = Number.isFinite(d) && d > 0 && availableHeight > 1e-9 && d <= availableHeight + 1e-9 ? d / availableHeight : null;
   const illustrativePhi = Number.isFinite(cable) ? (Number(side) === 1 ? cable : -cable) : null;
   const target = { theta, phi: phi ?? illustrativePhi, fraction, complete: phi !== null };
-  $('diagram-note').textContent = fraction === null ? 'Informe uma posição válida para visualizar a fixação.'
+  $('diagram-note').textContent = fraction === null ? 'Informe uma altura de fixação válida para visualizar o cabo.'
     : phi === null ? 'Cabo tracejado quando ilustrativo. Identifique a direção para mostrar a tração.'
       : `Direção da tração: ${format(Math.abs(phi))}° da vertical ascendente. O comprimento do cabo é esquemático.`;
   const start = currentDiagram;
