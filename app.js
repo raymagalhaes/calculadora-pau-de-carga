@@ -29,10 +29,11 @@ let axis = Array.isArray(saved.axis) && saved.axis.length === 3 && saved.axis.ev
   && Math.abs(Math.hypot(...saved.axis) - 1) < 1e-6 ? saved.axis : null;
 let theme = ['light', 'dark'].includes(saved.theme) ? saved.theme : '';
 let positionLimit = 100;
+let fixLocked = saved.fixLocked === true;
 
 function persist() {
   for (const key of keys) if (values[key] !== null) lastValues[key] = values[key];
-  try { localStorage.setItem(storageKey, JSON.stringify({ values: lastValues, axis, theme })); } catch { /* Os controles continuam disponíveis. */ }
+  try { localStorage.setItem(storageKey, JSON.stringify({ values: lastValues, axis, theme, fixLocked })); } catch { /* Os controles continuam disponíveis. */ }
 }
 
 // Ângulo do cabo como offset da vertical: 0° para cima, 90° horizontal.
@@ -101,7 +102,11 @@ function render() {
   display('total', result.total, 'kg');
   $('validation').textContent = result.error ?? '';
   const validLength = Number.isFinite(values.L) && values.L > 0;
-  $('fix-slider').disabled = !validLength;
+  $('fix-slider').disabled = !validLength || fixLocked;
+  $('fix-lock').checked = fixLocked;
+  $('fix-position-label').hidden = !fixLocked;
+  $('fix-position').max = validLength ? values.L : 1;
+  if (document.activeElement !== $('fix-position')) $('fix-position').value = Number.isFinite(values.d) ? values.d : '';
   $('theta-slider').value = Number.isFinite(values.theta) ? values.theta : 0;
   $('cable-slider').value = Number.isFinite(values.cable) ? values.cable : 0;
   $('cable-value').textContent = Number.isFinite(values.cable) ? `${format(values.cable)}°` : '—';
@@ -363,13 +368,26 @@ for (const [slider, field] of [['theta-slider', 'theta'], ['cable-slider', 'cabl
     updateInputs();
   });
 }
+$('fix-lock').addEventListener('change', event => {
+  fixLocked = event.target.checked;
+  persist();
+  render();
+});
+$('fix-position').addEventListener('input', event => {
+  if (!fixLocked) return;
+  const value = event.target.valueAsNumber;
+  $('d').value = Number.isFinite(value) ? value : '';
+  updateInputs();
+});
 $('fix-slider').addEventListener('input', event => {
+  if (fixLocked) return;
   $('d').value = event.target.value;
   updateInputs();
 });
 $('more').addEventListener('click', () => { positionLimit += 100; render(); });
 $('reset').addEventListener('click', () => {
   values = { ...defaults };
+  fixLocked = false;
   positionLimit = 100;
   clearPending('theta');
   clearPending('cable');
