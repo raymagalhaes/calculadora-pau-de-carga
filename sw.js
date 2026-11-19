@@ -1,7 +1,7 @@
 'use strict';
 
 const prefix = `pau-de-carga:${self.registration.scope}:`;
-const cacheName = `${prefix}v16`;
+const cacheName = `${prefix}v17`;
 const files = ['./index.html', './style.css', './app.js', './manifest.json', './icon-192.png', './icon-512.png'];
 const urls = new Set(files.map(path => new URL(path, self.registration.scope).href));
 const home = new URL('./index.html', self.registration.scope).href;
