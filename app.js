@@ -219,34 +219,76 @@ function clearPending(key) {
   $(`preview-${key}`).textContent = '';
   $(`save-${key}`).disabled = true;
 }
-function collectMotion() {
+// Filtra vibrações sem exigir que cada amostra isolada seja perfeita.
+const measurementWindowMs = 3000;
+const stabilityWindowMs = 1200;
+const stableSpreadDegrees = 0.5;
+const stableMinSamples = 8;
+const median = values => {
+  const ordered = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(ordered.length / 2);
+  return ordered.length % 2 ? ordered[mid] : (ordered[mid - 1] + ordered[mid]) / 2;
+};
+function robustUnit(readings) {
+  if (readings.length < stableMinSamples) return null;
+  const medians = [0, 1, 2].map(index => median(readings.map(sample => sample.vector[index])));
+  const magnitude = Math.hypot(...medians);
+  if (magnitude < 7.5 || magnitude > 12) return null;
+  return medians.map(value => value / magnitude);
+}
+function angularSpread(readings, unit) {
+  const deviations = readings.map(sample => degrees(Math.acos(clamp(dot(sample.vector, unit) / Math.hypot(...sample.vector)))));
+  // Percentil 80 reduz o efeito de picos isolados sem ocultar movimento contínuo.
+  const ordered = deviations.sort((a, b) => a - b);
+  return ordered[Math.floor((ordered.length - 1) * .8)];
+}
+function stableDirection(readings, now) {
+  const recent = readings.filter(sample => now - sample.time <= stabilityWindowMs);
+  if (recent.length < stableMinSamples || recent[recent.length - 1].time - recent[0].time < 900) return null;
+  const unit = robustUnit(recent);
+  if (!unit) return null;
+  const magnitudes = recent.map(sample => Math.hypot(...sample.vector));
+  if (median(magnitudes.map(m => Math.abs(m - 9.81))) > 1.5) return null;
+  if (angularSpread(recent, unit) > stableSpreadDegrees) return null;
+  return unit;
+}
+function collectMotion(onProgress) {
   return new Promise((resolve, reject) => {
     const readings = [];
+    const started = performance.now();
+    let finished = false;
+    let timeout;
+    function finish(error, value) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      window.removeEventListener('devicemotion', add);
+      if (error) reject(error);
+      else resolve(value);
+    }
     function add(event) {
       const sample = event.accelerationIncludingGravity;
-      if (sample && [sample.x, sample.y, sample.z].every(Number.isFinite)) readings.push([sample.x, sample.y, sample.z]);
+      if (!sample || ![sample.x, sample.y, sample.z].every(Number.isFinite)) return;
+      const now = performance.now();
+      const vector = [sample.x, sample.y, sample.z];
+      const magnitude = Math.hypot(...vector);
+      if (magnitude < 7.5 || magnitude > 12) return;
+      readings.push({ time: now, vector });
+      while (readings.length && now - readings[0].time > stabilityWindowMs) readings.shift();
+      const unit = stableDirection(readings, now);
+      if (unit) {
+        onProgress('Leitura estável. Ângulo registrado para confirmação.');
+        finish(null, unit);
+      } else {
+        onProgress('Estabilizando… mantenha o celular imóvel.');
+      }
     }
     window.addEventListener('devicemotion', add);
-    window.setTimeout(() => {
-      window.removeEventListener('devicemotion', add);
-      try { resolve(stableDirection(readings)); } catch (error) { reject(error); }
-    }, 2000);
+    timeout = window.setTimeout(() => {
+      if (readings.length < stableMinSamples) finish(new Error('Acelerômetro indisponível ou com poucas leituras. Use o ajuste manual.'));
+      else finish(new Error('Não foi possível estabilizar a leitura. Mantenha o celular e a estrutura parados e tente novamente.'));
+    }, measurementWindowMs);
   });
-}
-function stableDirection(readings) {
-  if (readings.length < 8) throw new Error('Acelerômetro indisponível ou com poucas leituras. Use a entrada manual.');
-  const sum = [0, 0, 0];
-  for (const reading of readings) reading.forEach((value, index) => { sum[index] += value; });
-  const average = sum.map(value => value / readings.length);
-  const magnitude = Math.hypot(...average);
-  if (magnitude < 7.5 || magnitude > 12) throw new Error('Leitura instável. Mantenha o celular e a estrutura parados e repita.');
-  const unit = average.map(value => value / magnitude);
-  const stable = readings.every(reading => {
-    const norm = Math.hypot(...reading);
-    return Math.abs(norm - magnitude) <= 1.3 && dot(unit, reading) / norm >= Math.cos(radians(4));
-  });
-  if (!stable) throw new Error('Leitura instável. Mantenha o celular e a estrutura parados e repita.');
-  return unit;
 }
 function calibrationStatus() {
   $('calibration').textContent = axis ? 'Calibração registrada' : 'Eixo longitudinal padrão';
@@ -267,8 +309,8 @@ async function measure(key) {
       try { permission = await DeviceMotionEvent.requestPermission(); } catch { permission = 'denied'; }
       if (permission !== 'granted') throw new Error('Permissão do acelerômetro indisponível. Verifique as permissões do navegador ou use a entrada manual.');
     }
-    sensor.textContent = 'Coletando por 2 segundos. Mantenha o celular parado.';
-    const unit = await collectMotion();
+    sensor.textContent = 'Estabilizando… mantenha o celular imóvel.';
+    const unit = await collectMotion(message => { sensor.textContent = message; });
     if (key === 'calibrate') {
       if (Math.abs(dot(unit, phoneAxis)) < Math.cos(radians(15))) throw new Error('Posicione o celular na vertical, com o topo para cima, e repita a calibração.');
       axis = unit;
@@ -283,7 +325,7 @@ async function measure(key) {
       $(`preview-${key}`).textContent = `Leitura: ${format(pending[key])}°. Registre para aplicar.`;
       $(`save-${key}`).disabled = false;
       $(`measure-${key}`).textContent = key === 'theta' ? 'Repetir medição do pau de carga' : 'Repetir medição do cabo';
-      sensor.textContent = 'Leitura estável.';
+      sensor.textContent = 'Leitura estável. Confirme em Registrar para aplicar o ângulo.';
     }
   } catch (error) {
     sensor.textContent = error.message;
