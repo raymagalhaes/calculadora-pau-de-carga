@@ -30,7 +30,7 @@ let axis = Array.isArray(saved.axis) && saved.axis.length === 3 && saved.axis.ev
 let theme = ['light', 'dark'].includes(saved.theme) ? saved.theme : '';
 let positionLimit = 100;
 let fixLocked = saved.fixLocked === true;
-let anchorHeight = Number.isFinite(saved.anchorHeight) && saved.anchorHeight >= 0 ? saved.anchorHeight : 6;
+let anchorHeight = Number.isFinite(saved.anchorHeight) ? Math.max(0, Math.min(6, saved.anchorHeight)) : 6;
 
 function persist() {
   for (const key of keys) if (values[key] !== null) lastValues[key] = values[key];
@@ -122,7 +122,7 @@ function render() {
   $('measure-cable').disabled = fixLocked;
   $('save-cable').disabled = fixLocked || pending.cable === null;
   $('anchor-height-control').hidden = !fixLocked;
-  $('anchor-height-slider').max = Math.max(1, Number.isFinite(values.L) ? values.L * 2 : 12, anchorHeight);
+  $('anchor-height-slider').max = 6;
   $('anchor-height-slider').value = anchorHeight;
   $('anchor-height-value').textContent = format(anchorHeight) + ' m';
   $('fix-position').max = validLength ? values.L : 1;
@@ -404,7 +404,7 @@ $('fix-lock').addEventListener('change', event => {
   render();
 });
 $('anchor-height-slider').addEventListener('input', event => {
-  anchorHeight = event.target.valueAsNumber;
+  anchorHeight = Math.max(0, Math.min(6, event.target.valueAsNumber));
   persist();
   render();
 });
