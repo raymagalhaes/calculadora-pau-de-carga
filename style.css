@@ -128,3 +128,14 @@ main { padding-top: .35rem; }
   margin-inline: auto;
 }
 .sensor-readout.sensor-active #sensor-angle { font-size: 2.5rem; }
+
+/* v14: visualização independente dos dados da bússola. */
+.compass-layout { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: .8rem; align-items: center; }
+#compass-svg { display: block; width: 100%; max-width: 220px; margin-inline: auto; }
+#compass-svg text { font: 700 16px system-ui, sans-serif; fill: var(--ink); }
+#compass-svg .compass-north { fill: #d34b42; }
+.compass-data { display: grid; gap: .3rem; min-width: 0; }
+#compass-heading { font-size: clamp(1.7rem, 6vw, 2.5rem); font-variant-numeric: tabular-nums; line-height: 1.1; }
+#compass-reference, #compass-raw { color: var(--muted); overflow-wrap: anywhere; }
+.compass-data .actions { margin-top: .35rem; }
+@media (max-width: 440px) { .compass-layout { grid-template-columns: 1fr; } .compass-data { text-align: center; justify-items: center; } }
