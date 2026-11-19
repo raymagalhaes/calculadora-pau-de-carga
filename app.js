@@ -30,10 +30,11 @@ let axis = Array.isArray(saved.axis) && saved.axis.length === 3 && saved.axis.ev
 let theme = ['light', 'dark'].includes(saved.theme) ? saved.theme : '';
 let positionLimit = 100;
 let fixLocked = saved.fixLocked === true;
+let anchorHeight = Number.isFinite(saved.anchorHeight) && saved.anchorHeight >= 0 ? saved.anchorHeight : 6;
 
 function persist() {
   for (const key of keys) if (values[key] !== null) lastValues[key] = values[key];
-  try { localStorage.setItem(storageKey, JSON.stringify({ values: lastValues, axis, theme, fixLocked })); } catch { /* Os controles continuam disponíveis. */ }
+  try { localStorage.setItem(storageKey, JSON.stringify({ values: lastValues, axis, theme, fixLocked, anchorHeight })); } catch { /* Os controles continuam disponíveis. */ }
 }
 
 // Ângulo do cabo como offset da vertical: 0° para cima, 90° horizontal.
@@ -42,6 +43,17 @@ function direction(cable) {
   return Number.isFinite(cable) && cable >= 0 && cable <= 90 ? -cable : null;
 }
 
+function cableGeometry(d, theta, height) {
+  if (![d, theta, height].every(Number.isFinite) || d <= 0 || height < 0) return null;
+  const x = d * Math.sin(radians(theta));
+  const vertical = height - d * Math.cos(radians(theta));
+  const distance = Math.hypot(x, vertical);
+  if (distance < 1e-9) return null;
+  return { phi: degrees(Math.atan2(-x, vertical)), distance };
+}
+function effectivePhi(d, theta, cable) {
+  return fixLocked ? cableGeometry(d, theta, anchorHeight)?.phi ?? null : direction(cable);
+}
 function solve({ L, We, Wc, P, d, theta, cable }) {
   const result = {};
   const validTheta = Number.isFinite(theta) && theta >= 0 && theta <= 90;
@@ -49,7 +61,7 @@ function solve({ L, We, Wc, P, d, theta, cable }) {
   const validLength = Number.isFinite(L) && L > 0;
   const validPoint = validLength && Number.isFinite(d) && d > 0 && d <= L + 1e-9;
   const attachmentDistance = validPoint ? d : NaN;
-  const phi = direction(cable)
+  const phi = effectivePhi(d, theta, cable);
   if (validMasses && Number.isFinite(We + Wc + P)) result.total = We + Wc + P;
   if (validPoint && validTheta) result.height = d * Math.cos(radians(theta));
   if (validTheta && phi !== null) result.relative = degrees(Math.acos(clamp(Math.cos(radians(phi - theta)))));
@@ -60,8 +72,9 @@ function solve({ L, We, Wc, P, d, theta, cable }) {
   if (!validLength) result.error = 'Informe um comprimento maior que zero.';
   else if (!validMasses) result.error = 'Informe massas iguais ou maiores que zero.';
   else if (!validPoint) result.error = 'A distância da fixação desde a base deve ser maior que zero e não ultrapassar o comprimento do pau de carga.';
-  else if (!validTheta || !Number.isFinite(cable) || cable < 0 || cable > 90) result.error = 'Informe inclinações entre 0° e 90°.';
-  else if (phi === null) result.error = 'Informe o desvio do cabo entre 0° e 90° a partir da vertical.';
+  else if (!validTheta || (!fixLocked && (!Number.isFinite(cable) || cable < 0 || cable > 90))) result.error = 'Informe inclinações entre 0° e 90°.';
+  else if (fixLocked && (!Number.isFinite(anchorHeight) || anchorHeight < 0)) result.error = 'Informe uma altura válida para a ancoragem na estrutura.';
+  else if (phi === null) result.error = fixLocked ? 'As duas fixações coincidem; não há direção definida para o cabo.' : 'Informe o desvio do cabo entre 0° e 90° a partir da vertical.';
   else if (!Number.isFinite(result.moment) || !Number.isFinite(result.total)) result.error = 'Os valores excedem a faixa de cálculo.';
   else {
     // O peso faz o pau de carga inclinar para a direita. A tração deve gerar momento negativo.
@@ -102,14 +115,23 @@ function render() {
   display('total', result.total, 'kg');
   $('validation').textContent = result.error ?? '';
   const validLength = Number.isFinite(values.L) && values.L > 0;
-  $('fix-slider').disabled = !validLength || fixLocked;
+  $('fix-slider').disabled = !validLength;
   $('fix-lock').checked = fixLocked;
-  $('fix-position-label').hidden = !fixLocked;
+  $('fix-position-label').hidden = true;
+  $('cable-slider').disabled = fixLocked;
+  $('measure-cable').disabled = fixLocked;
+  $('save-cable').disabled = fixLocked || pending.cable === null;
+  $('anchor-height-control').hidden = !fixLocked;
+  $('anchor-height-slider').max = Math.max(1, Number.isFinite(values.L) ? values.L * 2 : 12, anchorHeight);
+  $('anchor-height-slider').value = anchorHeight;
+  $('anchor-height-value').textContent = format(anchorHeight) + ' m';
   $('fix-position').max = validLength ? values.L : 1;
   if (document.activeElement !== $('fix-position')) $('fix-position').value = Number.isFinite(values.d) ? values.d : '';
   $('theta-slider').value = Number.isFinite(values.theta) ? values.theta : 0;
-  $('cable-slider').value = Number.isFinite(values.cable) ? values.cable : 0;
-  $('cable-value').textContent = Number.isFinite(values.cable) ? `${format(values.cable)}°` : '—';
+  const computedPhi = effectivePhi(values.d, values.theta, values.cable);
+  $('cable-slider').value = fixLocked && computedPhi !== null ? Math.min(180, Math.abs(computedPhi)) : (Number.isFinite(values.cable) ? values.cable : 0);
+  $('cable-slider').max = fixLocked ? 180 : 90;
+  $('cable-value').textContent = computedPhi !== null ? format(Math.abs(computedPhi)) + '°' + (fixLocked ? ' (automático)' : '') : '—';
   $('theta-value').textContent = Number.isFinite(values.theta) ? `${format(values.theta)}°` : '—';
   $('P-value').textContent = Number.isFinite(values.P) ? `${format(values.P)} kg` : '—';
   $('d-value').textContent = Number.isFinite(values.d) ? `${format(values.d)} m` : '—';
@@ -142,11 +164,12 @@ function arc(p, radius, angle, color, endRadius = radius + 17) {
   return `<path d="M ${p.x} ${p.y - radius} A ${radius} ${radius} 0 0 ${angle > 0 ? 1 : 0} ${end.x} ${end.y}" fill="none" stroke="${color}" stroke-width="1.5"/>`
     + label(project(p, endRadius, angle / 2), `${format(Math.abs(angle))}°`);
 }
-function draw({ theta, phi, fraction, complete }) {
+function draw({ theta, phi, fraction, complete, fixed, anchorRatio }) {
   const zero = { x: 0, y: 0 };
   const unitTip = project(zero, 1, theta);
   const unitPoint = project(zero, fraction ?? 0, theta);
-  const unitCable = phi === null ? unitPoint : project(unitPoint, .57, phi);
+  const unitAnchor = { x: 0, y: -(anchorRatio ?? 0) };
+  const unitCable = fixed ? unitAnchor : (phi === null ? unitPoint : project(unitPoint, .57, phi));
   const xs = [0, unitTip.x, unitCable.x];
   const ys = [-.15, 0, unitTip.y, unitCable.y];
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -155,7 +178,7 @@ function draw({ theta, phi, fraction, complete }) {
   const tip = project(base, scale, theta);
   const middle = project(base, scale / 2, theta);
   const point = project(base, scale * (fraction ?? 0), theta);
-  const cableEnd = phi === null ? point : project(point, scale * .57, phi);
+  const cableEnd = fixed ? project(base, scale * (anchorRatio ?? 0), 0) : (phi === null ? point : project(point, scale * .57, phi));
   const ropeEnd = shift(tip, 0, 41);
   const reference = 'stroke-dasharray="4 5"';
   const gravity = 'marker-end="url(#weight-arrow)"';
@@ -175,12 +198,16 @@ function draw({ theta, phi, fraction, complete }) {
     + label(shift(ropeEnd, -16, 1), 'Carga', 'end')
     + label(shift(project(base, scale * .78, theta), 13, -13), `${format(values.L)} m`, 'start')
     + (fraction === null ? '' : circle(point, 5, cableColor) + label(shift(point, -8, -7), `${format(values.d)} m da base`, 'end'))
-    + (phi === null || fraction === null ? '' : line(point, shift(point, 0, -48), 'var(--muted)', 1, reference)
+    + (fixed ? line(base, cableEnd, 'var(--muted)', 3) + circle(cableEnd, 5, 'var(--ink)') + label(shift(cableEnd, -8, -9), format(anchorHeight) + ' m estrutura', 'end') : '')
+    + (phi === null || fraction === null ? '' : (fixed ? '' : line(point, shift(point, 0, -48), 'var(--muted)', 1, reference))
       + line(point, cableEnd, cableColor, 2.5, complete ? 'marker-end="url(#cable-arrow)"' : reference)
-      + arc(point, Math.min(28, scale * .25), phi, cableColor, Math.min(45, scale * .25 + 15)));
+      + (fixed ? '' : arc(point, Math.min(28, scale * .25), phi, cableColor, Math.min(45, scale * .25 + 15))));
 }
 let currentDiagram;
 let frame;
+function fixedGeometryChanged(start, target) {
+  return start.fixed && start.anchorRatio !== target.anchorRatio;
+}
 function updateDiagram() {
   cancelAnimationFrame(frame);
   const { L, d, theta, cable } = values;
@@ -191,14 +218,14 @@ function updateDiagram() {
     $('diagram-note').textContent = 'Informe um comprimento positivo e uma inclinação válida para desenhar o pau de carga.';
     return;
   }
-  const phi = direction(cable);
+  const phi = effectivePhi(d, theta, cable);
   const fraction = Number.isFinite(d) && d > 0 && d <= L + 1e-9 ? d / L : null;
-  const target = { theta, phi, fraction, complete: phi !== null };
+  const target = { theta, phi, fraction, complete: phi !== null, fixed: fixLocked, anchorRatio: anchorHeight / L };
   $('diagram-note').textContent = fraction === null ? 'Informe uma distância de fixação válida ao longo do pau de carga.'
     : phi === null ? 'Informe um ângulo válido do cabo para visualizar a tração.'
       : `Desvio do cabo: ${format(Math.abs(phi))}° da vertical, com tração assumida em sentido oposto ao pau de carga. Comprimento esquemático.`;
   const start = currentDiagram;
-  if (!start || reducedMotion.matches || start.complete !== target.complete || start.fraction === null || fraction === null
+  if (!start || start.fixed !== target.fixed || fixedGeometryChanged(start, target) || reducedMotion.matches || start.complete !== target.complete || start.fraction === null || fraction === null
     || start.phi === null || target.phi === null) {
     draw(currentDiagram = target);
     return;
@@ -212,7 +239,9 @@ function updateDiagram() {
       theta: start.theta + (target.theta - start.theta) * ease,
       phi: ((start.phi + delta * ease + 540) % 360) - 180,
       fraction: start.fraction + (fraction - start.fraction) * ease,
-      complete: target.complete
+      complete: target.complete,
+      fixed: target.fixed,
+      anchorRatio: target.anchorRatio
     };
     draw(currentDiagram);
     if (progress < 1) frame = requestAnimationFrame(animate);
@@ -370,6 +399,12 @@ for (const [slider, field] of [['theta-slider', 'theta'], ['cable-slider', 'cabl
 }
 $('fix-lock').addEventListener('change', event => {
   fixLocked = event.target.checked;
+  if (fixLocked) clearPending('cable');
+  persist();
+  render();
+});
+$('anchor-height-slider').addEventListener('input', event => {
+  anchorHeight = event.target.valueAsNumber;
   persist();
   render();
 });
@@ -388,6 +423,7 @@ $('more').addEventListener('click', () => { positionLimit += 100; render(); });
 $('reset').addEventListener('click', () => {
   values = { ...defaults };
   fixLocked = false;
+  anchorHeight = 6;
   positionLimit = 100;
   clearPending('theta');
   clearPending('cable');
