@@ -90,3 +90,24 @@ th:last-child, td:last-child { text-align: right; }
 .slider-line input[type="range"] { flex: 1; width: auto; min-width: 0; margin: .15rem 0; }
 .slider-line output { min-width: 4.5rem; text-align: right; font-size: .95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (max-width: 859px) { .quick-grid { grid-template-columns: 1fr; } }
+
+/* v6: sem tarja superior; título integrado à visualização e ações secundárias após sliders. */
+main { padding-top: .35rem; }
+.layout { gap: .45rem; }
+.panel { border-radius: .7rem; padding: .55rem .7rem; }
+.visual h1 { font-size: clamp(1.05rem, 4.4vw, 1.45rem); margin: 0 0 .3rem; line-height: 1.2; letter-spacing: -.02em; }
+.visual #diagram { max-height: min(46vh, 23rem); }
+.primary-tension { margin-top: .35rem; padding: .4rem .65rem; }
+.primary-tension strong { font-size: clamp(1.45rem, 6vw, 2rem); }
+.primary-tension > span:first-child { font-size: .82rem; }
+.quick-controls { padding: .5rem .7rem; }
+.quick-controls h2 { font-size: .95rem; margin: 0 0 .15rem; }
+.quick-grid { gap: .1rem; }
+.quick-item { padding: .25rem 0; }
+.quick-item > label { font-size: .8rem; }
+.slider-line { gap: .45rem; }
+.slider-line input[type="range"] { min-height: 1.8rem; margin: 0; }
+.slider-line output { font-size: .85rem; min-width: 3.5rem; }
+.utility-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .35rem; margin-top: .35rem; padding-top: .35rem; border-top: 1px solid var(--line); }
+.utility-actions button { min-height: 2rem; padding: .25rem .6rem; font-size: .8rem; }
+.notice { margin-block: .35rem; padding: .6rem .7rem; }
