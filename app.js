@@ -8,11 +8,21 @@ const numberFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }
 const format = value => Math.abs(value) >= 1e12 ? value.toExponential(2).replace('.', ',') : numberFormat.format(value);
 const $ = id => document.getElementById(id);
 const keys = Object.keys(defaults);
-const storageKey = 'pau-de-carga-v2';
+const storageKey = 'pau-de-carga-v15';
 const phoneAxis = [0, 1, 0];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let saved = {};
-try { saved = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('pau de carga-de-carga-v2')) || {}; } catch { /* Sessão sem armazenamento. */ }
+try {
+  const current = localStorage.getItem(storageKey);
+  const previous = current ? null : (localStorage.getItem('pau-de-carga-v2') || localStorage.getItem('pau de carga-de-carga-v2'));
+  saved = JSON.parse(current || previous || 'null') || {};
+  // Versões anteriores guardavam d como altura vertical; converte para distância na estrutura.
+  if (!current && previous && saved.values && Number.isFinite(saved.values.d) && Number.isFinite(saved.values.theta)) {
+    const cosine = Math.cos(radians(saved.values.theta));
+    saved.values.d = cosine > 1e-9 ? saved.values.d / cosine : saved.values.d;
+    if (Number.isFinite(saved.values.L)) saved.values.d = Math.min(saved.values.L, saved.values.d);
+  }
+} catch { /* Sessão sem armazenamento. */ }
 let values = { ...defaults, ...saved.values };
 let lastValues = { ...values };
 let axis = Array.isArray(saved.axis) && saved.axis.length === 3 && saved.axis.every(Number.isFinite)
@@ -36,12 +46,11 @@ function solve({ L, We, Wc, P, d, theta, cable }) {
   const validTheta = Number.isFinite(theta) && theta >= 0 && theta <= 90;
   const validMasses = [We, Wc, P].every(value => Number.isFinite(value) && value >= 0);
   const validLength = Number.isFinite(L) && L > 0;
-  const availableHeight = validLength && validTheta ? L * Math.cos(radians(theta)) : NaN;
-  const validPoint = Number.isFinite(d) && d > 0 && Number.isFinite(availableHeight) && d <= availableHeight + 1e-9;
-  const attachmentDistance = validPoint ? d / Math.cos(radians(theta)) : NaN;
+  const validPoint = validLength && Number.isFinite(d) && d > 0 && d <= L + 1e-9;
+  const attachmentDistance = validPoint ? d : NaN;
   const phi = direction(cable)
   if (validMasses && Number.isFinite(We + Wc + P)) result.total = We + Wc + P;
-  if (validPoint) result.height = d;
+  if (validPoint && validTheta) result.height = d * Math.cos(radians(theta));
   if (validTheta && phi !== null) result.relative = degrees(Math.acos(clamp(Math.cos(radians(phi - theta)))));
   if (validLength && validMasses && validTheta) {
     const moment = theta === 0 ? 0 : (P + Wc + We / 2) * (L * Math.sin(radians(theta)));
@@ -49,7 +58,7 @@ function solve({ L, We, Wc, P, d, theta, cable }) {
   }
   if (!validLength) result.error = 'Informe um comprimento maior que zero.';
   else if (!validMasses) result.error = 'Informe massas iguais ou maiores que zero.';
-  else if (!validPoint) result.error = 'A altura da fixação deve ser maior que zero e não ultrapassar a altura do pau de carga nessa inclinação.';
+  else if (!validPoint) result.error = 'A distância da fixação desde a base deve ser maior que zero e não ultrapassar o comprimento do pau de carga.';
   else if (!validTheta || !Number.isFinite(cable) || cable < 0 || cable > 90) result.error = 'Informe inclinações entre 0° e 90°.';
   else if (phi === null) result.error = 'Informe o desvio do cabo entre 0° e 90° a partir da vertical.';
   else if (!Number.isFinite(result.moment) || !Number.isFinite(result.total)) result.error = 'Os valores excedem a faixa de cálculo.';
@@ -101,13 +110,13 @@ function render() {
   $('d-value').textContent = Number.isFinite(values.d) ? `${format(values.d)} m` : '—';
   $('load-slider').max = Math.max(1000, Number.isFinite(values.P) ? Math.ceil(values.P / 100) * 100 : 1000);
   $('load-slider').value = Number.isFinite(values.P) ? values.P : 0;
-  $('fix-slider').max = validLength && Number.isFinite(values.theta) ? Math.max(0, values.L * Math.cos(radians(values.theta))) : 1;
+  $('fix-slider').max = validLength ? values.L : 1;
   $('fix-slider').value = values.d ?? 0;
   $('angle-rows').innerHTML = Array.from({ length: 10 }, (_, index) => {
     const theta = index * 10;
     return `<tr><th scope="row">${theta}°</th><td>${resultCell(solve({ ...values, theta }))}</td></tr>`;
   }).join('');
-  const count = validLength && Number.isFinite(values.theta) ? Math.floor(Math.max(0, values.L * Math.cos(radians(values.theta))) + 1e-9) : 0;
+  const count = validLength ? Math.floor(values.L + 1e-9) : 0;
   $('point-rows').innerHTML = Array.from({ length: Math.min(count, positionLimit) }, (_, index) => {
     const d = index + 1;
     return `<tr><th scope="row">${d}</th><td>${resultCell(solve({ ...values, d }))}</td></tr>`;
@@ -160,7 +169,7 @@ function draw({ theta, phi, fraction, complete }) {
     + label(shift(tip, 12, -10), 'Cabeça', 'start')
     + label(shift(ropeEnd, -16, 1), 'Carga', 'end')
     + label(shift(project(base, scale * .78, theta), 13, -13), `${format(values.L)} m`, 'start')
-    + (fraction === null ? '' : circle(point, 5, cableColor) + label(shift(point, -8, -7), `${format(values.d)} m altura`, 'end'))
+    + (fraction === null ? '' : circle(point, 5, cableColor) + label(shift(point, -8, -7), `${format(values.d)} m da base`, 'end'))
     + (phi === null || fraction === null ? '' : line(point, shift(point, 0, -48), 'var(--muted)', 1, reference)
       + line(point, cableEnd, cableColor, 2.5, complete ? 'marker-end="url(#cable-arrow)"' : reference)
       + arc(point, Math.min(28, scale * .25), phi, cableColor, Math.min(45, scale * .25 + 15)));
@@ -178,10 +187,9 @@ function updateDiagram() {
     return;
   }
   const phi = direction(cable);
-  const availableHeight = L * Math.cos(radians(theta));
-  const fraction = Number.isFinite(d) && d > 0 && availableHeight > 1e-9 && d <= availableHeight + 1e-9 ? d / availableHeight : null;
+  const fraction = Number.isFinite(d) && d > 0 && d <= L + 1e-9 ? d / L : null;
   const target = { theta, phi, fraction, complete: phi !== null };
-  $('diagram-note').textContent = fraction === null ? 'Informe uma altura de fixação válida para visualizar o cabo.'
+  $('diagram-note').textContent = fraction === null ? 'Informe uma distância de fixação válida ao longo do pau de carga.'
     : phi === null ? 'Informe um ângulo válido do cabo para visualizar a tração.'
       : `Desvio do cabo: ${format(Math.abs(phi))}° da vertical, com tração assumida em sentido oposto ao pau de carga. Comprimento esquemático.`;
   const start = currentDiagram;
