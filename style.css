@@ -139,3 +139,10 @@ main { padding-top: .35rem; }
 #compass-reference, #compass-raw { color: var(--muted); overflow-wrap: anywhere; }
 .compass-data .actions { margin-top: .35rem; }
 @media (max-width: 440px) { .compass-layout { grid-template-columns: 1fr; } .compass-data { text-align: center; justify-items: center; } }
+
+/* v16: travamento opcional do ponto de fixação, sem travar os ângulos. */
+.fix-lock { margin-top: .25rem; }
+.fix-lock-toggle { display: inline-flex; gap: .45rem; align-items: center; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.fix-lock-toggle input { width: 1.05rem; height: 1.05rem; min-height: 0; margin: 0; accent-color: var(--accent); }
+.fix-lock-number { display: block; margin-top: .3rem; font-size: .8rem; }
+.fix-lock-number input { width: min(100%, 11rem); min-height: 2.1rem; }
