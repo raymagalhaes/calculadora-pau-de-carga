@@ -388,6 +388,91 @@ writeValues();
 calibrationStatus();
 render();
 
+
+/* v14: bússola somente para visualização, independente do cálculo estrutural. */
+let compassRunning = false;
+let compassReceived = false;
+let compassTimeout = null;
+let compassLastDraw = 0;
+let compassEventType = null;
+const compassLabels = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
+const compassNormalize = value => (value % 360 + 360) % 360;
+function compassUpdate(event) {
+  if (!compassRunning) return;
+  const now = performance.now();
+  if (now - compassLastDraw < 80) return;
+  compassLastDraw = now;
+  const alpha = event.alpha, beta = event.beta, gamma = event.gamma;
+  const appleHeading = Number.isFinite(event.webkitCompassHeading) ? event.webkitCompassHeading : null;
+  // DeviceOrientationEvent.absolute indica uma referência terrestre; alpha comum não garante norte.
+  const absoluteHeading = event.absolute === true && Number.isFinite(alpha) ? 360 - alpha : null;
+  const relativeHeading = Number.isFinite(alpha) ? 360 - alpha : null;
+  const heading = appleHeading ?? absoluteHeading ?? relativeHeading;
+  const reference = appleHeading !== null ? 'Norte magnético (iOS)' :
+    absoluteHeading !== null ? 'Orientação absoluta (referência terrestre)' :
+    relativeHeading !== null ? 'Orientação relativa (não é norte)' : 'Sem rumo disponível';
+  $('compass-raw').textContent = ['α', 'β', 'γ'].map((label, index) => {
+    const value = [alpha, beta, gamma][index];
+    return label + ': ' + (Number.isFinite(value) ? format(value) + '°' : '—');
+  }).join(' · ');
+  if (!Number.isFinite(heading)) return;
+  compassReceived = true;
+  const value = compassNormalize(heading);
+  $('compass-heading').textContent = format(value) + '°';
+  $('compass-direction').textContent = compassLabels[Math.round(value / 45) % 8];
+  $('compass-reference').textContent = reference;
+  $('compass-rose').setAttribute('transform', 'rotate(' + (-value) + ' 120 120)');
+  $('compass-status').textContent = 'Recebendo leituras de orientação.';
+}
+function stopCompass() {
+  compassRunning = false;
+  if (compassEventType) window.removeEventListener(compassEventType, compassUpdate);
+  compassEventType = null;
+  clearTimeout(compassTimeout);
+  $('compass-start').disabled = false;
+  $('compass-stop').disabled = true;
+  $('compass-status').textContent = compassReceived ? 'Leitura interrompida.' : 'Bússola parada.';
+}
+$('compass-start').addEventListener('click', async () => {
+  if (compassRunning) return;
+  if (!window.isSecureContext || !window.DeviceOrientationEvent) {
+    $('compass-status').textContent = 'Sensor de orientação indisponível neste navegador ou fora de HTTPS.';
+    return;
+  }
+  try {
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const permission = await DeviceOrientationEvent.requestPermission();
+      if (permission !== 'granted') throw new Error('Permissão de orientação negada pelo navegador.');
+    }
+    compassRunning = true;
+    compassReceived = false;
+    compassLastDraw = 0;
+    $('compass-start').disabled = true;
+    $('compass-stop').disabled = false;
+    $('compass-status').textContent = 'Aguardando dados do sensor…';
+    compassEventType = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+    window.addEventListener(compassEventType, compassUpdate);
+    compassTimeout = window.setTimeout(() => {
+      if (compassRunning && !compassReceived && compassEventType === 'deviceorientationabsolute') {
+        window.removeEventListener(compassEventType, compassUpdate);
+        compassEventType = 'deviceorientation';
+        window.addEventListener(compassEventType, compassUpdate);
+      }
+      compassTimeout = window.setTimeout(() => {
+        if (compassRunning && !compassReceived) $('compass-status').textContent = 'Nenhuma orientação recebida. Verifique as permissões de movimento e os sensores do aparelho.';
+      }, 2500);
+    }, 1500);
+  } catch (error) {
+    $('compass-status').textContent = error.message || 'Não foi possível ativar a bússola.';
+    stopCompass();
+    $('compass-status').textContent = error.message || 'Não foi possível ativar a bússola.';
+  }
+});
+$('compass-stop').addEventListener('click', stopCompass);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && compassRunning) stopCompass();
+});
+
 let installPrompt;
 window.addEventListener('beforeinstallprompt', event => {
   event.preventDefault();
