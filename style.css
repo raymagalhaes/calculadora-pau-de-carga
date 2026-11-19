@@ -61,3 +61,14 @@ th:last-child, td:last-child { text-align: right; }
 /* A visualização é sempre o primeiro painel, ocupando toda a largura. */
 .layout > .visual { grid-column: 1 / -1; grid-row: 1; }
 .visual #diagram { max-height: min(65vh, 33rem); }
+
+/* Controles prioritários imediatamente abaixo do desenho. */
+.layout > .quick-controls { grid-column: 1 / -1; grid-row: 2; }
+.layout > .notice { grid-column: 1 / -1; }
+.quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+.quick-item { min-width: 0; padding: .75rem; border: 1px solid var(--line); border-radius: .75rem; }
+.quick-item > label { display: block; min-height: 2.7em; }
+.quick-number { display: flex; align-items: center; gap: .65rem; }
+.quick-number input { flex: 1; min-width: 0; }
+.quick-number output { min-width: 4.5rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.quick-item input[type="range"] { width: 100%; margin: .65rem 0; min-height: 2.25rem; }
