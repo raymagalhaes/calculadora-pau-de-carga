@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102524">
+<title>Calculadora de Pau de Carga</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="stylesheet" href="./style.css">
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header><div class="top"><h1>Calculadora de Pau de Carga</h1><div class="actions"><button id="install" hidden>Instalar</button><button id="theme" aria-label="Alternar tema">Tema</button></div></div></header>
+<main>
+<aside class="notice">Os resultados são estimativas de equilíbrio estático idealizado e não representam capacidade segura de içamento. O aplicativo não verifica resistência estrutural, ancoragens, cabos, roldanas, efeitos dinâmicos ou demais componentes.</aside>
+<div class="layout">
+<section class="panel measurements" aria-labelledby="measure-title">
+<h2 id="measure-title">Medições</h2>
+<p>Meça somente com a estrutura parada. Alinhe o lado comprido do celular ao elemento que deseja medir.</p>
+<div class="actions"><button id="calibrate">Calibrar na vertical</button><small id="calibration"></small></div>
+<p class="help">Para calibrar, mantenha o celular imóvel na vertical, com o topo voltado para cima.</p>
+<p id="sensor" role="status">Sensor ainda não testado.</p>
+<div class="fields">
+<div class="measurement"><label for="theta">Pau · ângulo da vertical (°)</label><input id="theta" type="number" min="0" max="90" step="any" inputmode="decimal" required><div class="actions"><button id="measure-theta">Medir pau</button><button id="save-theta" disabled>Registrar</button></div><output id="preview-theta" aria-live="polite"></output></div>
+<div class="measurement"><label for="cable">Cabo · inclinação da vertical (°)</label><input id="cable" type="number" min="0" max="90" step="any" inputmode="decimal" required><div class="actions"><button id="measure-cable">Medir cabo</button><button id="save-cable" disabled>Registrar</button></div><output id="preview-cable" aria-live="polite"></output></div>
+<label>Lado da ancoragem, visto da fixação<select id="side"><option value="">A identificar</option><option value="-1">Oposto à inclinação do pau (esquerda)</option><option value="1">Mesmo lado da inclinação do pau (direita)</option></select></label>
+<label>Altura da ancoragem, vista da fixação<select id="rise"><option value="">A identificar</option><option value="1">Acima</option><option value="-1">Abaixo</option></select></label>
+</div>
+<p class="help">Use os campos para ajustar os ângulos manualmente. Identifique a direção da tração no local. Acima ou abaixo é necessário para um cabo inclinado. A leitura do celular é indicativa.</p>
+</section>
+<section class="panel visual" aria-labelledby="visual-title">
+<h2 id="visual-title">Visualização</h2>
+<svg id="diagram" viewBox="0 0 460 380" role="img" aria-labelledby="diagram-title diagram-desc">
+<title id="diagram-title">Diagrama do pau de carga</title><desc id="diagram-desc">Pau articulado, peso da estrutura, peso na cabeça, carga suspensa e direção da tração do cabo.</desc>
+<defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 H 0 V 20" class="grid-line"/></pattern><marker id="weight-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L8 4 L0 8 Z" fill="var(--weight)"/></marker><marker id="cable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="var(--cable)"/></marker></defs>
+<rect width="460" height="380" fill="url(#grid)"/><g id="geometry"></g>
+</svg>
+<div class="legend"><span class="key pole">Pau de carga</span><span class="key cable">Cabo</span><span class="key weight">Pesos</span></div>
+<p id="visual-angles"></p>
+<p id="diagram-note" class="help"></p>
+</section>
+<section class="panel parameters" aria-labelledby="params-title">
+<h2 id="params-title">Parâmetros</h2>
+<div class="fields">
+<label>Comprimento do pau (m)<input id="L" type="number" min="0" step="any" inputmode="decimal" required></label>
+<label>Massa da estrutura (kg)<input id="We" type="number" min="0" step="any" inputmode="decimal" required></label>
+<label>Massa da cabeça (kg)<input id="Wc" type="number" min="0" step="any" inputmode="decimal" required></label>
+<label>Carga suspensa (kg)<input id="P" type="number" min="0" step="any" inputmode="decimal" required></label>
+<label>Fixação a partir da base (m)<input id="d" type="number" min="0" step="any" inputmode="decimal" required></label>
+<label class="slider">Ajuste da fixação<input id="fix-slider" type="range" min="0" max="9" step="any"></label>
+</div>
+<button id="reset">Restaurar valores iniciais</button>
+</section>
+<section class="panel results" aria-labelledby="results-title">
+<h2 id="results-title">Resultados</h2>
+<div class="tension"><span>Tensão estática estimada</span><strong id="kgf">—</strong><span id="kn">—</span></div>
+<p id="validation" role="status"></p>
+<dl><div><dt>Momento na base</dt><dd id="moment">—</dd></div><div><dt>Altura da fixação</dt><dd id="height">—</dd></div><div><dt>Ângulo entre pau e tração</dt><dd id="relative">—</dd></div><div><dt>Peso total informado</dt><dd id="total">—</dd></div></dl>
+<div class="tables">
+<details><summary>Tensão por inclinação do pau</summary><p class="help">Mantém a direção do cabo e os demais parâmetros.</p><table><thead><tr><th scope="col">Ângulo</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="angle-rows"></tbody></table></details>
+<details><summary>Tensão por posição da fixação</summary><p class="help">Mantém as duas direções e os demais parâmetros.</p><div class="table-scroll"><table><thead><tr><th scope="col">Fixação (m)</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="point-rows"></tbody></table></div><button id="more" hidden>Mostrar próximos 100 metros</button></details>
+</div>
+</section>
+</div>
+<p id="offline" class="help" role="status"></p>
+</main>
+</body>
+</html>

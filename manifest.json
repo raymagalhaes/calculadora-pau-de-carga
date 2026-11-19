@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "Calculadora de Pau de Carga",
+  "short_name": "Pau de Carga",
+  "lang": "pt-BR",
+  "description": "Inclinômetro e estimativa de equilíbrio estático do pau de carga.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef4f2",
+  "theme_color": "#102524",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
