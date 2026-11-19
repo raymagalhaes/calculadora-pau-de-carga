@@ -415,7 +415,6 @@ $('fix-position').addEventListener('input', event => {
   updateInputs();
 });
 $('fix-slider').addEventListener('input', event => {
-  if (fixLocked) return;
   $('d').value = event.target.value;
   updateInputs();
 });
