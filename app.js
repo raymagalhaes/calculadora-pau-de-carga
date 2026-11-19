@@ -94,6 +94,8 @@ function render() {
   const validLength = Number.isFinite(values.L) && values.L > 0;
   $('fix-slider').disabled = !validLength;
   $('theta-slider').value = Number.isFinite(values.theta) ? values.theta : 0;
+  $('cable-slider').value = Number.isFinite(values.cable) ? values.cable : 0;
+  $('cable-value').textContent = Number.isFinite(values.cable) ? `${format(values.cable)}°` : '—';
   $('theta-value').textContent = Number.isFinite(values.theta) ? `${format(values.theta)}°` : '—';
   $('P-value').textContent = Number.isFinite(values.P) ? `${format(values.P)} kg` : '—';
   $('d-value').textContent = Number.isFinite(values.d) ? `${format(values.d)} m` : '—';
@@ -346,10 +348,10 @@ for (const key of ['theta', 'cable']) {
   });
 }
 $('calibrate').addEventListener('click', () => measure('calibrate'));
-for (const [slider, field] of [['theta-slider', 'theta'], ['load-slider', 'P']]) {
+for (const [slider, field] of [['theta-slider', 'theta'], ['cable-slider', 'cable'], ['load-slider', 'P']]) {
   $(slider).addEventListener('input', event => {
     $(field).value = event.target.value;
-    if (field === 'theta') clearPending('theta');
+    if (field === 'theta' || field === 'cable') clearPending(field);
     updateInputs();
   });
 }
