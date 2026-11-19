@@ -212,6 +212,18 @@ function updateDiagram() {
 
 const dot = (a, b) => a.reduce((sum, value, index) => sum + value * b[index], 0);
 const sensor = $('sensor');
+const sensorReadout = $('sensor-readout');
+let lastSensorDisplay = 0;
+function showSensorSample(vector, key, now) {
+  if (now - lastSensorDisplay < 100) return;
+  lastSensorDisplay = now;
+  const magnitude = Math.hypot(...vector);
+  const unit = vector.map(value => value / magnitude);
+  const reference = key === 'calibrate' ? phoneAxis : (axis ?? phoneAxis);
+  const angle = degrees(Math.acos(clamp(Math.abs(dot(unit, reference)))));
+  $('sensor-angle').textContent = `${angle.toFixed(1).replace('.', ',')}°`;
+  $('sensor-axes').textContent = ['X', 'Y', 'Z'].map((name, index) => `${name}: ${vector[index].toFixed(2).replace('.', ',')}`).join(' · ') + ' m/s²';
+}
 let measuring = false;
 const pending = { theta: null, cable: null };
 function clearPending(key) {
@@ -252,7 +264,7 @@ function stableDirection(readings, now) {
   if (angularSpread(recent, unit) > stableSpreadDegrees) return null;
   return unit;
 }
-function collectMotion(onProgress) {
+function collectMotion(onProgress, onSample) {
   return new Promise((resolve, reject) => {
     const readings = [];
     const started = performance.now();
@@ -273,6 +285,7 @@ function collectMotion(onProgress) {
       const vector = [sample.x, sample.y, sample.z];
       const magnitude = Math.hypot(...vector);
       if (magnitude < 7.5 || magnitude > 12) return;
+      onSample(vector, now);
       readings.push({ time: now, vector });
       while (readings.length && now - readings[0].time > stabilityWindowMs) readings.shift();
       const unit = stableDirection(readings, now);
@@ -296,6 +309,11 @@ function calibrationStatus() {
 async function measure(key) {
   if (measuring) return;
   if (key !== 'calibrate') clearPending(key);
+  sensorReadout.hidden = false;
+  $('sensor-angle').textContent = '—';
+  $('sensor-axes').textContent = 'X: — · Y: — · Z: —';
+  $('sensor-phase').textContent = 'Aguardando leituras…';
+  lastSensorDisplay = 0;
   if (!window.isSecureContext || !window.DeviceMotionEvent) {
     sensor.textContent = 'Sensor indisponível. Abra pelo HTTPS ou use a entrada manual.';
     return;
@@ -310,7 +328,7 @@ async function measure(key) {
       if (permission !== 'granted') throw new Error('Permissão do acelerômetro indisponível. Verifique as permissões do navegador ou use a entrada manual.');
     }
     sensor.textContent = 'Estabilizando… mantenha o celular imóvel.';
-    const unit = await collectMotion(message => { sensor.textContent = message; });
+    const unit = await collectMotion(message => { sensor.textContent = message; $('sensor-phase').textContent = message; }, (vector, now) => showSensorSample(vector, key, now));
     if (key === 'calibrate') {
       if (Math.abs(dot(unit, phoneAxis)) < Math.cos(radians(15))) throw new Error('Posicione o celular na vertical, com o topo para cima, e repita a calibração.');
       axis = unit;
@@ -319,6 +337,7 @@ async function measure(key) {
       persist();
       calibrationStatus();
       sensor.textContent = 'Calibração concluída.';
+      $('sensor-phase').textContent = 'Calibração concluída.';
     } else {
       const angle = degrees(Math.acos(clamp(Math.abs(dot(unit, axis ?? phoneAxis)))));
       pending[key] = Math.round(angle * 10) / 10;
@@ -326,9 +345,12 @@ async function measure(key) {
       $(`save-${key}`).disabled = false;
       $(`measure-${key}`).textContent = key === 'theta' ? 'Repetir medição do pau de carga' : 'Repetir medição do cabo';
       sensor.textContent = 'Leitura estável. Confirme em Registrar para aplicar o ângulo.';
+      $('sensor-angle').textContent = `${format(pending[key])}°`;
+      $('sensor-phase').textContent = 'Leitura estabilizada. Toque em Registrar.';
     }
   } catch (error) {
     sensor.textContent = error.message;
+    $('sensor-phase').textContent = error.message;
   } finally {
     measuring = false;
     buttons.forEach(button => { button.disabled = false; });
