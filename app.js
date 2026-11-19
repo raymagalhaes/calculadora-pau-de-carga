@@ -8,11 +8,11 @@ const numberFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }
 const format = value => Math.abs(value) >= 1e12 ? value.toExponential(2).replace('.', ',') : numberFormat.format(value);
 const $ = id => document.getElementById(id);
 const keys = Object.keys(defaults);
-const storageKey = 'pau de carga-de-carga-v2';
+const storageKey = 'pau-de-carga-v2';
 const phoneAxis = [0, 1, 0];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let saved = {};
-try { saved = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { /* Sessão sem armazenamento. */ }
+try { saved = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('pau de carga-de-carga-v2')) || {}; } catch { /* Sessão sem armazenamento. */ }
 let values = { ...defaults, ...saved.values };
 let lastValues = { ...values };
 let axis = Array.isArray(saved.axis) && saved.axis.length === 3 && saved.axis.every(Number.isFinite)
