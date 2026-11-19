@@ -14,7 +14,7 @@
 <main>
 <div class="layout">
 <section class="panel visual" aria-labelledby="visual-title">
-<h1 id="visual-title">Calculadora de Pau de Carga <small class="help">v14</small></h1>
+<h1 id="visual-title">Calculadora de Pau de Carga <small class="help">v15</small></h1>
 <svg id="diagram" viewBox="0 0 460 380" role="img" aria-labelledby="diagram-title diagram-desc">
 <title id="diagram-title">Diagrama do pau de carga</title><desc id="diagram-desc">Pau de carga articulado, peso da estrutura, peso na cabeça, carga suspensa e direção da tração do cabo.</desc>
 <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 H 0 V 20" class="grid-line"/></pattern><marker id="weight-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L8 4 L0 8 Z" fill="var(--weight)"/></marker><marker id="cable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="var(--cable)"/></marker></defs>
@@ -37,7 +37,7 @@
 <div class="slider-line"><input id="cable-slider" type="range" min="0" max="90" step="0.5" aria-label="Ajustar ângulo do cabo de segurança"><output id="cable-value"></output></div>
 </div>
 <div class="quick-item">
-<label for="d">Altura vertical da fixação do cabo de segurança (m)</label>
+<label for="d">Fixação do cabo · distância da base ao longo do pau de carga (m)</label>
 <input id="d" type="number" min="0" step="any" inputmode="decimal" required hidden>
 <div class="slider-line"><input id="fix-slider" type="range" min="0" max="9" step="0.01" aria-label="Ajustar altura da fixação do cabo de segurança"><output id="d-value"></output></div>
 </div>
@@ -115,10 +115,10 @@
 </section>
 <section class="panel results" aria-labelledby="results-title">
 <h2 id="results-title">Resultados</h2>
-<dl><div><dt>Momento na base</dt><dd id="moment">—</dd></div><div><dt>Altura da fixação</dt><dd id="height">—</dd></div><div><dt>Ângulo entre pau de carga e tração</dt><dd id="relative">—</dd></div><div><dt>Peso total informado</dt><dd id="total">—</dd></div></dl>
+<dl><div><dt>Momento na base</dt><dd id="moment">—</dd></div><div><dt>Altura vertical calculada da fixação</dt><dd id="height">—</dd></div><div><dt>Ângulo entre pau de carga e tração</dt><dd id="relative">—</dd></div><div><dt>Peso total informado</dt><dd id="total">—</dd></div></dl>
 <div class="tables">
-<details><summary>Tensão por inclinação do pau de carga</summary><p class="help">Mantém o desvio do cabo em relação à vertical e os demais parâmetros. A altura da fixação permanece constante.</p><table><thead><tr><th scope="col">Ângulo</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="angle-rows"></tbody></table></details>
-<details><summary>Tensão por altura da fixação</summary><p class="help">Mantém as duas direções e os demais parâmetros.</p><div class="table-scroll"><table><thead><tr><th scope="col">Altura (m)</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="point-rows"></tbody></table></div><button id="more" hidden>Mostrar mais alturas</button></details>
+<details><summary>Tensão por inclinação do pau de carga</summary><p class="help">Mantém o desvio do cabo em relação à vertical e os demais parâmetros. A distância da fixação ao longo do pau de carga permanece constante.</p><table><thead><tr><th scope="col">Ângulo</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="angle-rows"></tbody></table></details>
+<details><summary>Tensão por distância da fixação</summary><p class="help">Distância medida desde a base, ao longo do pau de carga. Mantém as inclinações e os demais parâmetros.</p><div class="table-scroll"><table><thead><tr><th scope="col">Distância da base (m)</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="point-rows"></tbody></table></div><button id="more" hidden>Mostrar mais posições</button></details>
 </div>
 </section>
 </div>
