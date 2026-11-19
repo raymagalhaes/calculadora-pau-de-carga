@@ -8,7 +8,7 @@ const numberFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }
 const format = value => Math.abs(value) >= 1e12 ? value.toExponential(2).replace('.', ',') : numberFormat.format(value);
 const $ = id => document.getElementById(id);
 const keys = Object.keys(defaults);
-const storageKey = 'pau-de-carga-v2';
+const storageKey = 'pau de carga-de-carga-v2';
 const phoneAxis = [0, 1, 0];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let saved = {};
@@ -53,14 +53,14 @@ function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
   }
   if (!validLength) result.error = 'Informe um comprimento maior que zero.';
   else if (!validMasses) result.error = 'Informe massas iguais ou maiores que zero.';
-  else if (!validPoint) result.error = 'A altura da fixação deve ser maior que zero e não ultrapassar a altura do pau nessa inclinação.';
+  else if (!validPoint) result.error = 'A altura da fixação deve ser maior que zero e não ultrapassar a altura do pau de carga nessa inclinação.';
   else if (!validTheta || !Number.isFinite(cable) || cable < 0 || cable > 90) result.error = 'Informe inclinações entre 0° e 90°.';
   else if (phi === null) result.error = 'Identifique a direção da ancoragem para calcular a tensão.';
   else if (!Number.isFinite(result.moment) || !Number.isFinite(result.total)) result.error = 'Os valores excedem a faixa de cálculo.';
   else {
-    // O peso faz o pau inclinar para a direita. A tração deve gerar momento negativo.
+    // O peso faz o pau de carga inclinar para a direita. A tração deve gerar momento negativo.
     const signedLever = Math.sin(radians(phi - theta));
-    if (Math.abs(signedLever) < 1e-9) result.error = 'O cabo está alinhado ou quase alinhado ao pau e não fornece momento útil.';
+    if (Math.abs(signedLever) < 1e-9) result.error = 'O cabo está alinhado ou quase alinhado ao pau de carga e não fornece momento útil.';
     else if (result.moment > 0 && signedLever > 0) result.error = 'A tração nessa direção aumenta o momento gravitacional em vez de equilibrá-lo.';
     else {
       const tension = (result.moment / attachmentDistance) / Math.abs(signedLever);
@@ -97,6 +97,12 @@ function render() {
   $('validation').textContent = result.error ?? '';
   const validLength = Number.isFinite(values.L) && values.L > 0;
   $('fix-slider').disabled = !validLength;
+  $('theta-slider').value = Number.isFinite(values.theta) ? values.theta : 0;
+  $('theta-value').textContent = Number.isFinite(values.theta) ? `${format(values.theta)}°` : '—';
+  $('P-value').textContent = Number.isFinite(values.P) ? `${format(values.P)} kg` : '—';
+  $('d-value').textContent = Number.isFinite(values.d) ? `${format(values.d)} m` : '—';
+  $('load-slider').max = Math.max(1000, Number.isFinite(values.P) ? Math.ceil(values.P / 100) * 100 : 1000);
+  $('load-slider').value = Number.isFinite(values.P) ? values.P : 0;
   $('fix-slider').max = validLength && Number.isFinite(values.theta) ? Math.max(0, values.L * Math.cos(radians(values.theta))) : 1;
   $('fix-slider').value = values.d ?? 0;
   $('angle-rows').innerHTML = Array.from({ length: 10 }, (_, index) => {
@@ -166,11 +172,11 @@ let frame;
 function updateDiagram() {
   cancelAnimationFrame(frame);
   const { L, d, theta, cable, side, rise } = values;
-  $('visual-angles').textContent = `Da vertical · pau ${theta === null ? '—' : `${format(theta)}°`} · cabo ${cable === null ? '—' : `${format(cable)}°`}`;
+  $('visual-angles').textContent = `Da vertical · pau de carga ${theta === null ? '—' : `${format(theta)}°`} · cabo ${cable === null ? '—' : `${format(cable)}°`}`;
   if (!Number.isFinite(L) || L <= 0 || !Number.isFinite(theta)) {
     svg.replaceChildren();
     currentDiagram = null;
-    $('diagram-note').textContent = 'Informe um comprimento positivo e uma inclinação válida para desenhar o pau.';
+    $('diagram-note').textContent = 'Informe um comprimento positivo e uma inclinação válida para desenhar o pau de carga.';
     return;
   }
   const phi = direction(cable, side, rise);
@@ -276,7 +282,7 @@ async function measure(key) {
       pending[key] = Math.round(angle * 10) / 10;
       $(`preview-${key}`).textContent = `Leitura: ${format(pending[key])}°. Registre para aplicar.`;
       $(`save-${key}`).disabled = false;
-      $(`measure-${key}`).textContent = key === 'theta' ? 'Repetir medição do pau' : 'Repetir medição do cabo';
+      $(`measure-${key}`).textContent = key === 'theta' ? 'Repetir medição do pau de carga' : 'Repetir medição do cabo';
       sensor.textContent = 'Leitura estável.';
     }
   } catch (error) {
@@ -311,6 +317,13 @@ for (const key of ['theta', 'cable']) {
   });
 }
 $('calibrate').addEventListener('click', () => measure('calibrate'));
+for (const [slider, field] of [['theta-slider', 'theta'], ['load-slider', 'P']]) {
+  $(slider).addEventListener('input', event => {
+    $(field).value = event.target.value;
+    if (field === 'theta') clearPending('theta');
+    updateInputs();
+  });
+}
 $('fix-slider').addEventListener('input', event => {
   $('d').value = event.target.value;
   updateInputs();
@@ -321,7 +334,7 @@ $('reset').addEventListener('click', () => {
   positionLimit = 100;
   clearPending('theta');
   clearPending('cable');
-  $('measure-theta').textContent = 'Medir pau';
+  $('measure-theta').textContent = 'Medir pau de carga';
   $('measure-cable').textContent = 'Medir cabo';
   writeValues();
   persist();
