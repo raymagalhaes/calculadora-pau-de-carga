@@ -267,7 +267,6 @@ function stableDirection(readings, now) {
 function collectMotion(onProgress, onSample) {
   return new Promise((resolve, reject) => {
     const readings = [];
-    const started = performance.now();
     let finished = false;
     let timeout;
     function finish(error, value) {
@@ -298,7 +297,7 @@ function collectMotion(onProgress, onSample) {
     }
     window.addEventListener('devicemotion', add);
     timeout = window.setTimeout(() => {
-      if (readings.length < stableMinSamples) finish(new Error('Acelerômetro indisponível ou com poucas leituras. Use o ajuste manual.'));
+      if (readings.length < stableMinSamples) finish(new Error('O sensor não enviou leituras suficientes. Verifique as permissões de movimento do navegador e tente novamente.'));
       else finish(new Error('Não foi possível estabilizar a leitura. Mantenha o celular e a estrutura parados e tente novamente.'));
     }, measurementWindowMs);
   });
@@ -310,12 +309,15 @@ async function measure(key) {
   if (measuring) return;
   if (key !== 'calibrate') clearPending(key);
   sensorReadout.hidden = false;
+  sensorReadout.classList.add('sensor-active');
   $('sensor-angle').textContent = '—';
   $('sensor-axes').textContent = 'X: — · Y: — · Z: —';
   $('sensor-phase').textContent = 'Aguardando leituras…';
   lastSensorDisplay = 0;
   if (!window.isSecureContext || !window.DeviceMotionEvent) {
     sensor.textContent = 'Sensor indisponível. Abra pelo HTTPS ou use a entrada manual.';
+    $('sensor-phase').textContent = sensor.textContent;
+    sensorReadout.classList.remove('sensor-active');
     return;
   }
   measuring = true;
@@ -354,6 +356,7 @@ async function measure(key) {
   } finally {
     measuring = false;
     buttons.forEach(button => { button.disabled = false; });
+    sensorReadout.classList.remove('sensor-active');
   }
 }
 
