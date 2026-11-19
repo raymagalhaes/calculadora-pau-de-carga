@@ -1,6 +1,6 @@
 'use strict';
 
-const defaults = Object.freeze({ L: 9, We: 120, Wc: 20, P: 200, d: 3, theta: 30, cable: 90, side: '-1', rise: '' });
+const defaults = Object.freeze({ L: 9, We: 120, Wc: 20, P: 200, d: 3, theta: 30, cable: 90 });
 const radians = degrees => degrees * Math.PI / 180;
 const degrees = angle => angle * 180 / Math.PI;
 const clamp = value => Math.max(-1, Math.min(1, value));
@@ -25,17 +25,13 @@ function persist() {
   try { localStorage.setItem(storageKey, JSON.stringify({ values: lastValues, axis, theme })); } catch { /* Os controles continuam disponíveis. */ }
 }
 
-function direction(cable, side, rise) {
-  if (!Number.isFinite(cable) || cable < 0 || cable > 90) return null;
-  const horizontal = Number(side);
-  const vertical = Number(rise);
-  if (cable === 0) return Math.abs(vertical) === 1 ? (vertical === 1 ? 0 : 180) : null;
-  if (Math.abs(horizontal) !== 1) return null;
-  if (cable === 90) return horizontal * 90;
-  return Math.abs(vertical) === 1 ? horizontal * (vertical === 1 ? cable : 180 - cable) : null;
+// Ângulo do cabo como offset da vertical: 0° para cima, 90° horizontal.
+// Hipótese explícita: a tração aponta contra a inclinação do pau de carga.
+function direction(cable) {
+  return Number.isFinite(cable) && cable >= 0 && cable <= 90 ? -cable : null;
 }
 
-function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
+function solve({ L, We, Wc, P, d, theta, cable }) {
   const result = {};
   const validTheta = Number.isFinite(theta) && theta >= 0 && theta <= 90;
   const validMasses = [We, Wc, P].every(value => Number.isFinite(value) && value >= 0);
@@ -43,7 +39,7 @@ function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
   const availableHeight = validLength && validTheta ? L * Math.cos(radians(theta)) : NaN;
   const validPoint = Number.isFinite(d) && d > 0 && Number.isFinite(availableHeight) && d <= availableHeight + 1e-9;
   const attachmentDistance = validPoint ? d / Math.cos(radians(theta)) : NaN;
-  const phi = direction(cable, side, rise);
+  const phi = direction(cable)
   if (validMasses && Number.isFinite(We + Wc + P)) result.total = We + Wc + P;
   if (validPoint) result.height = d;
   if (validTheta && phi !== null) result.relative = degrees(Math.acos(clamp(Math.cos(radians(phi - theta)))));
@@ -55,7 +51,7 @@ function solve({ L, We, Wc, P, d, theta, cable, side, rise }) {
   else if (!validMasses) result.error = 'Informe massas iguais ou maiores que zero.';
   else if (!validPoint) result.error = 'A altura da fixação deve ser maior que zero e não ultrapassar a altura do pau de carga nessa inclinação.';
   else if (!validTheta || !Number.isFinite(cable) || cable < 0 || cable > 90) result.error = 'Informe inclinações entre 0° e 90°.';
-  else if (phi === null) result.error = 'Identifique a direção da ancoragem para calcular a tensão.';
+  else if (phi === null) result.error = 'Informe o desvio do cabo entre 0° e 90° a partir da vertical.';
   else if (!Number.isFinite(result.moment) || !Number.isFinite(result.total)) result.error = 'Os valores excedem a faixa de cálculo.';
   else {
     // O peso faz o pau de carga inclinar para a direita. A tração deve gerar momento negativo.
@@ -171,7 +167,7 @@ let currentDiagram;
 let frame;
 function updateDiagram() {
   cancelAnimationFrame(frame);
-  const { L, d, theta, cable, side, rise } = values;
+  const { L, d, theta, cable } = values;
   $('visual-angles').textContent = `Da vertical · pau de carga ${theta === null ? '—' : `${format(theta)}°`} · cabo ${cable === null ? '—' : `${format(cable)}°`}`;
   if (!Number.isFinite(L) || L <= 0 || !Number.isFinite(theta)) {
     svg.replaceChildren();
@@ -182,11 +178,10 @@ function updateDiagram() {
   const phi = direction(cable, side, rise);
   const availableHeight = L * Math.cos(radians(theta));
   const fraction = Number.isFinite(d) && d > 0 && availableHeight > 1e-9 && d <= availableHeight + 1e-9 ? d / availableHeight : null;
-  const illustrativePhi = Number.isFinite(cable) ? (Number(side) === 1 ? cable : -cable) : null;
-  const target = { theta, phi: phi ?? illustrativePhi, fraction, complete: phi !== null };
+  const target = { theta, phi, fraction, complete: phi !== null };
   $('diagram-note').textContent = fraction === null ? 'Informe uma altura de fixação válida para visualizar o cabo.'
-    : phi === null ? 'Cabo tracejado quando ilustrativo. Identifique a direção para mostrar a tração.'
-      : `Direção da tração: ${format(Math.abs(phi))}° da vertical ascendente. O comprimento do cabo é esquemático.`;
+    : phi === null ? 'Informe um ângulo válido do cabo para visualizar a tração.'
+      : `Desvio do cabo: ${format(Math.abs(phi))}° da vertical, com tração assumida em sentido oposto ao pau de carga. Comprimento esquemático.`;
   const start = currentDiagram;
   if (!start || reducedMotion.matches || start.complete !== target.complete || start.fraction === null || fraction === null
     || start.phi === null || target.phi === null) {
