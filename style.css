@@ -118,3 +118,13 @@ main { padding-top: .35rem; }
 #sensor-angle { font-size: 1.8rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--accent); }
 #sensor-phase { font-size: .82rem; }
 #sensor-axes { font-variant-numeric: tabular-nums; }
+
+/* v9: painel visível sem rolagem enquanto o sensor coleta dados. */
+.sensor-readout.sensor-active {
+  position: fixed; z-index: 1000; left: max(.6rem, env(safe-area-inset-left));
+  right: max(.6rem, env(safe-area-inset-right)); bottom: max(.7rem, env(safe-area-inset-bottom));
+  margin: 0; padding: .85rem 1rem; border: 2px solid var(--accent);
+  box-shadow: 0 5px 28px #0005; max-width: 35rem;
+  margin-inline: auto;
+}
+.sensor-readout.sensor-active #sensor-angle { font-size: 2.5rem; }
