@@ -175,7 +175,7 @@ function updateDiagram() {
     $('diagram-note').textContent = 'Informe um comprimento positivo e uma inclinação válida para desenhar o pau de carga.';
     return;
   }
-  const phi = direction(cable, side, rise);
+  const phi = direction(cable);
   const availableHeight = L * Math.cos(radians(theta));
   const fraction = Number.isFinite(d) && d > 0 && availableHeight > 1e-9 && d <= availableHeight + 1e-9 ? d / availableHeight : null;
   const target = { theta, phi, fraction, complete: phi !== null };
