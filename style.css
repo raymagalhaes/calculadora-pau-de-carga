@@ -57,3 +57,7 @@ th, td { text-align: left; padding: .3rem .4rem; border-bottom: 1px solid var(--
 th:last-child, td:last-child { text-align: right; }
 @media (min-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); align-items: start; } }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* A visualização é sempre o primeiro painel, ocupando toda a largura. */
+.layout > .visual { grid-column: 1 / -1; grid-row: 1; }
+.visual #diagram { max-height: min(65vh, 33rem); }
