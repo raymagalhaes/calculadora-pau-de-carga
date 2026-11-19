@@ -15,6 +15,17 @@
 <main>
 <aside class="notice">Os resultados são estimativas de equilíbrio estático idealizado e não representam capacidade segura de içamento. O aplicativo não verifica resistência estrutural, ancoragens, cabos, roldanas, efeitos dinâmicos ou demais componentes.</aside>
 <div class="layout">
+<section class="panel visual" aria-labelledby="visual-title">
+<h2 id="visual-title">Visualização</h2>
+<svg id="diagram" viewBox="0 0 460 380" role="img" aria-labelledby="diagram-title diagram-desc">
+<title id="diagram-title">Diagrama do pau de carga</title><desc id="diagram-desc">Pau articulado, peso da estrutura, peso na cabeça, carga suspensa e direção da tração do cabo.</desc>
+<defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 H 0 V 20" class="grid-line"/></pattern><marker id="weight-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L8 4 L0 8 Z" fill="var(--weight)"/></marker><marker id="cable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="var(--cable)"/></marker></defs>
+<rect width="460" height="380" fill="url(#grid)"/><g id="geometry"></g>
+</svg>
+<div class="legend"><span class="key pole">Pau de carga</span><span class="key cable">Cabo</span><span class="key weight">Pesos</span></div>
+<p id="visual-angles"></p>
+<p id="diagram-note" class="help"></p>
+</section>
 <section class="panel measurements" aria-labelledby="measure-title">
 <h2 id="measure-title">Medições</h2>
 <p>Meça somente com a estrutura parada. Alinhe o lado comprido do celular ao elemento que deseja medir.</p>
@@ -29,17 +40,7 @@
 </div>
 <p class="help">Use os campos para ajustar os ângulos manualmente. Identifique a direção da tração no local. Acima ou abaixo é necessário para um cabo inclinado. A leitura do celular é indicativa.</p>
 </section>
-<section class="panel visual" aria-labelledby="visual-title">
-<h2 id="visual-title">Visualização</h2>
-<svg id="diagram" viewBox="0 0 460 380" role="img" aria-labelledby="diagram-title diagram-desc">
-<title id="diagram-title">Diagrama do pau de carga</title><desc id="diagram-desc">Pau articulado, peso da estrutura, peso na cabeça, carga suspensa e direção da tração do cabo.</desc>
-<defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 H 0 V 20" class="grid-line"/></pattern><marker id="weight-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L8 4 L0 8 Z" fill="var(--weight)"/></marker><marker id="cable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="var(--cable)"/></marker></defs>
-<rect width="460" height="380" fill="url(#grid)"/><g id="geometry"></g>
-</svg>
-<div class="legend"><span class="key pole">Pau de carga</span><span class="key cable">Cabo</span><span class="key weight">Pesos</span></div>
-<p id="visual-angles"></p>
-<p id="diagram-note" class="help"></p>
-</section>
+
 <section class="panel parameters" aria-labelledby="params-title">
 <h2 id="params-title">Parâmetros</h2>
 <div class="fields">
@@ -47,8 +48,8 @@
 <label>Massa da estrutura (kg)<input id="We" type="number" min="0" step="any" inputmode="decimal" required></label>
 <label>Massa da cabeça (kg)<input id="Wc" type="number" min="0" step="any" inputmode="decimal" required></label>
 <label>Carga suspensa (kg)<input id="P" type="number" min="0" step="any" inputmode="decimal" required></label>
-<label>Fixação a partir da base (m)<input id="d" type="number" min="0" step="any" inputmode="decimal" required></label>
-<label class="slider">Ajuste da fixação<input id="fix-slider" type="range" min="0" max="9" step="any"></label>
+<label>Altura vertical da fixação (m)<input id="d" type="number" min="0" step="any" inputmode="decimal" required></label>
+<label class="slider">Ajuste da altura da fixação<input id="fix-slider" type="range" min="0" max="9" step="any"></label>
 </div>
 <button id="reset">Restaurar valores iniciais</button>
 </section>
@@ -58,8 +59,8 @@
 <p id="validation" role="status"></p>
 <dl><div><dt>Momento na base</dt><dd id="moment">—</dd></div><div><dt>Altura da fixação</dt><dd id="height">—</dd></div><div><dt>Ângulo entre pau e tração</dt><dd id="relative">—</dd></div><div><dt>Peso total informado</dt><dd id="total">—</dd></div></dl>
 <div class="tables">
-<details><summary>Tensão por inclinação do pau</summary><p class="help">Mantém a direção do cabo e os demais parâmetros.</p><table><thead><tr><th scope="col">Ângulo</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="angle-rows"></tbody></table></details>
-<details><summary>Tensão por posição da fixação</summary><p class="help">Mantém as duas direções e os demais parâmetros.</p><div class="table-scroll"><table><thead><tr><th scope="col">Fixação (m)</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="point-rows"></tbody></table></div><button id="more" hidden>Mostrar próximos 100 metros</button></details>
+<details><summary>Tensão por inclinação do pau</summary><p class="help">Mantém a direção do cabo e os demais parâmetros. A altura da fixação permanece constante.</p><table><thead><tr><th scope="col">Ângulo</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="angle-rows"></tbody></table></details>
+<details><summary>Tensão por altura da fixação</summary><p class="help">Mantém as duas direções e os demais parâmetros.</p><div class="table-scroll"><table><thead><tr><th scope="col">Altura (m)</th><th scope="col">Tensão (kgf)</th></tr></thead><tbody id="point-rows"></tbody></table></div><button id="more" hidden>Mostrar mais alturas</button></details>
 </div>
 </section>
 </div>
