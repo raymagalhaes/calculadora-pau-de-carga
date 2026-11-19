@@ -146,3 +146,7 @@ main { padding-top: .35rem; }
 .fix-lock-toggle input { width: 1.05rem; height: 1.05rem; min-height: 0; margin: 0; accent-color: var(--accent); }
 .fix-lock-number { display: block; margin-top: .3rem; font-size: .8rem; }
 .fix-lock-number input { width: min(100%, 11rem); min-height: 2.1rem; }
+
+/* v17: controles de ancoragem geométrica. */
+#cable-slider:disabled { opacity: .45; }
+#anchor-height-control { padding-top: .2rem; }
